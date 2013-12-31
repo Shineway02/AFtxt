@@ -66,6 +66,7 @@ z_vcc_afp01:--z_vcc_afp01
 		mounts float,
 		weights float,
 		price decimal(10,3),
+		radius decimal(10,2),
 		totals float,
 		size nvarchar(max),
 		memos nvarchar(max) 
@@ -73,10 +74,10 @@ z_vcc_afp01:--z_vcc_afp01
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
-	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
+	" ,b.tel,case when len(b.addr2)>0 then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.taxtype,b.tax,b.money,b.total,b.invono,b.tranmoney"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.radius,a.total"+
 	" ,a.memo"+
 	" from view_vccs"+@t_accy+" a"+
 	" left join view_vcc"+@t_accy+" b on a.noa = b.noa"+
@@ -86,7 +87,7 @@ z_vcc_afp01:--z_vcc_afp01
 	" order by a.noa,a.no2 "
 	
 	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
-		,no2,productno,product,unit,mounts,weights,price,totals,memos)
+		,no2,productno,product,unit,mounts,weights,price,radius,totals,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20)'
 	,@t_bno=@t_bno,@t_eno=@t_eno
 	
@@ -177,6 +178,7 @@ z_vcc_afp01:--z_vcc_afp01
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) b07
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b08
 		,memos b09
+		,radius b10
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b

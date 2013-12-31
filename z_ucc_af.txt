@@ -41,11 +41,11 @@ insert into @tmp
 		group by a.custno,a.storeno,b.productno,b.product,b.unit
 		union
 		select
-			'0' gno,a.custno,a.storinno,b.productno,b.product,b.unit,sum(b.mount) mount ------調入倉庫
+			'0' gno,a.custno,a.storeinno,b.productno,b.product,b.unit,sum(b.mount) mount ------調入倉庫
 		from view_cng a 
 		left join view_cngs b on a.noa = b.noa
 		where (a.datea between @t_bdate and @t_edate)
-		group by a.custno,a.storinno,b.productno,b.product,b.unit
+		group by a.custno,a.storeinno,b.productno,b.product,b.unit
 	) a 
 	left join store b on left(a.storeno,len(b.noa))=b.noa
 	left join cust c on a.custno = c.noa

@@ -51,7 +51,7 @@ insert into @tmp
 	left join cust c on a.custno = c.noa
 	group by a.gno,a.custno,c.nick,isnull(b.noa,''),a.storeno,isnull(b.store,''),a.productno,a.product,a.unit
 select * from @tmp order by mainsno,gno,storeno;
----------------------------------*****************-------------------------------------------
+--****************************************************************************--
 z_ucc_af2:--z_ucc_af2
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
@@ -174,3 +174,4 @@ select
 	case when (a.total=0) and (a.gno='0') then null else a.total end total,
 	case when len(qhref)>0 then a.qhref+'_af?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' else '' end qhref
 from @tmp a order by a.storeno,a.custno,a.productno,a.unit,a.orderby,a.typea;
+--****************************************************************************--

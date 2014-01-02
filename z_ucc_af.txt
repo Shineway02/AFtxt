@@ -122,7 +122,7 @@ insert into @tmp
 			'0' gno,case a.typea when '2' then '退貨' else '進貨' end typea,
 			a.noa,b.storeno,a.custno,b.productno,b.product,b.unit,
 			case a.typea when '2' then 0 else b.mount end inmount,
-			case a.typea when '2' then b.mount else 0 end outmount,'vcc' qhref
+			case a.typea when '2' then b.mount else 0 end outmount,'vcc_af' qhref
 		from view_vcc a
 		left join view_vccs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_vccs where noa=a.noa) c
@@ -130,7 +130,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'入庫' typea,a.noa,b.storeno,a.custno,b.productno,b.product,b.unit,
-			b.mount inmount,0 outmount,'ina' qhref
+			b.mount inmount,0 outmount,'ina_af' qhref
 		from view_ina a
 		left join view_inas b on a.noa=b.noa
 		outer apply(select count(*) mount from view_inas where noa=a.noa) c
@@ -138,7 +138,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'調出' typea,a.noa,a.storeno,a.custno,b.productno,b.product,b.unit,
-			0 inmount,b.mount outmount,'cng' qhref
+			0 inmount,b.mount outmount,'cng_af' qhref
 		from view_cng a
 		left join view_cngs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_cngs where noa=a.noa) c
@@ -146,7 +146,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'調入' typea,a.noa,a.storeinno,a.custno,b.productno,b.product,b.unit,
-			b.mount inmount,0 outmount,'cng' qhref
+			b.mount inmount,0 outmount,'cng_af' qhref
 		from view_cng a
 		left join view_cngs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_cngs where noa=a.noa) c
@@ -172,6 +172,6 @@ select
 	a.inmount,
 	a.outmount,
 	case when (a.total=0) and (a.gno='0') then null else a.total end total,
-	case when len(qhref)>0 then a.qhref+'_af?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' else '' end qhref
+	case when len(qhref)>0 then a.qhref+'?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' else '' end qhref
 from @tmp a order by a.storeno,a.custno,a.productno,a.unit,a.orderby,a.typea;
 --****************************************************************************--

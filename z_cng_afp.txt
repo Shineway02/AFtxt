@@ -1,0 +1,100 @@
+z_cng_afp01:--z_cng_afp01
+	declare @pagecount int
+	declare @t_accy nvarchar(20)
+	declare @t_bno nvarchar(20)
+	declare @t_eno nvarchar(20)
+	set @t_accy = '[1]'
+	set @t_bno = case when '#non' = [2] then '' else [2] end
+	set @t_eno = case when '#non' = [3] then CHAR(255) else [3] end
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 5   --------一頁幾行
+	declare @n int
+	----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(max),
+		datea nvarchar(20),
+		storeno nvarchar(20),
+		storeinno nvarchar(20),
+		memo nvarchar(max),
+		
+		noq nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		memos nvarchar(max) 
+	)
+	insert into @tmp(gno,noa,custno,cust,datea,storeno,storeinno,memo
+		,noq,productno,product,unit,mounts,memos)
+	select '1',a.noa,b.custno,b.cust,b.datea,b.storeno,b.storeinno,b.memo
+		,a.noq,a.productno,a.product,a.unit,a.mount,a.memo memos
+	from view_cngs a
+	left join view_cng b on a.noa=b.noa and a.accy=b.accy
+	where a.noa between @t_bno and @t_eno
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,noq,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,noq,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set custno=b.custno,cust=b.cust,datea=b.datea,memo=b.memo,storeno=b.storeno,storeinno=b.storeinno
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	
+	
+	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,noa,noq
+		,ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,datea a01
+		,noa a02
+		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a03
+		,memo a04
+		,storeno a05
+		,storeinno a06
+
+		,productno b01
+		,product b02
+		,unit b03
+		,mounts b04
+		,memos b05
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 desc)b
+	)a
+	order by a.noa,a.noq;

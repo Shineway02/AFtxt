@@ -148,7 +148,7 @@ insert into @tmp
 			'0' gno,case a.typea when '2' then '退貨' else '出貨' end typea,
 			a.noa,b.storeno,a.custno,b.productno,b.product,
 			case a.typea when '2' then b.mount else 0 end inmount,
-			case a.typea when '2' then 0 else b.mount end outmount,'vcc_af' qhref,a.datea
+			case a.typea when '2' then 0 else b.mount end outmount,'vcc_af'+a.accy qhref,a.datea
 		from view_vcc a
 		left join view_vccs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_vccs where noa=a.noa) c
@@ -157,7 +157,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'入庫' typea,a.noa,b.storeno,a.custno,b.productno,b.product,
-			b.mount inmount,0 outmount,'ina_af' qhref,a.datea
+			b.mount inmount,0 outmount,'ina_af'+a.accy qhref,a.datea
 		from view_ina a
 		left join view_inas b on a.noa=b.noa
 		outer apply(select count(*) mount from view_inas where noa=a.noa) c
@@ -166,7 +166,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'調出' typea,a.noa,a.storeno,a.custno,b.productno,b.product,
-			0 inmount,b.mount outmount,'cng_af' qhref,a.datea
+			0 inmount,b.mount outmount,'cng_af'+a.accy qhref,a.datea
 		from view_cng a
 		left join view_cngs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_cngs where noa=a.noa) c
@@ -175,7 +175,7 @@ insert into @tmp
 		union
 		select
 			'0' gno,'調入' typea,a.noa,a.storeinno,a.custno,b.productno,b.product,
-			b.mount inmount,0 outmount,'cng_af' qhref,a.datea
+			b.mount inmount,0 outmount,'cng_af'+a.accy qhref,a.datea
 		from view_cng a
 		left join view_cngs b on a.noa=b.noa
 		outer apply(select count(*) mount from view_cngs where noa=a.noa) c
@@ -230,6 +230,6 @@ select
 	a.inmount,
 	a.outmount,
 	case when (a.total=0) and (a.gno='0') then null else a.total end total,
-	case when len(qhref)>0 then a.qhref+'?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' else '' end qhref
+	case when len(qhref)>0 then substring(a.qhref,0,len(a.qhref)-2)+'?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?'+right(a.qhref,3) else '' end qhref
 from @tmp a order by a.storeno,a.custno,a.productno,a.orderby,a.datea;
 --****************************************************************************--

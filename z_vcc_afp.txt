@@ -1,3 +1,71 @@
+z_vcc_afp02:--z_vcc_afp02
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bproductno nvarchar(20)
+	declare @t_eproductno nvarchar(20)
+	declare @t_local nvarchar(20)
+	
+	set @t_bdate = case when '#non' = [5] then '' else [5] end
+	set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+	set @t_bcustno = case when '#non' = [7] then '' else [7] end
+	set @t_ecustno = case when '#non' = [8] then CHAR(255) else [8] end
+	set @t_bproductno = case when '#non' = [9] then '' else [9] end
+	set @t_eproductno = case when '#non' = [10] then CHAR(255) else [10] end
+	set @t_local = case when '#non' = [11] then '' else [11] end
+	---------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		pno1 int,
+		pno2 int,
+		locala nvarchar(20),
+		custno nvarchar(20),
+		nick nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		mount float
+	)
+	
+	insert into @tmp(locala,custno,productno,mount)
+	select c.caseuseno,b.custno,a.productno,sum(a.mount)
+	from view_vccs a
+	left join view_vcc b on a.noa=b.noa
+	left join addr c on b.post2=c.noa
+	where b.noa is not null
+	and b.datea between @t_bdate and @t_edate
+	and b.custno between @t_bcustno and @t_ecustno
+	and (len(@t_local)=0 or @t_local=c.caseuseno)
+	and a.productno between @t_bproductno and @t_eproductno
+	group by c.caseuseno,b.custno,a.productno
+	
+	update @tmp set nick=b.nick,product=c.product
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	left join ucc c on a.productno=c.noa
+	
+	update @tmp set pno1=b.recno,pno2=c.recno
+	from @tmp a
+	left join (select ROW_NUMBER()over(PARTITION by locala order by locala,custno,productno) recno,locala,custno,productno from @tmp) b 
+		on a.locala=b.locala and a.custno=b.custno and a.productno=b.productno
+	left join (select ROW_NUMBER()over(PARTITION by locala,custno order by locala,custno,productno) recno,locala,custno,productno from @tmp) c 
+		on a.locala=c.locala and a.custno=c.custno and a.productno=c.productno 
+	
+	declare @titlea nvarchar(max)
+	set @titlea = case when len(@t_bdate)>0 and @t_edate!=char(255) then '日期區間： '+@t_bdate+' ~ '+@t_edate+''
+						when @t_bdate=@t_edate then '日期區間： '+@t_bdate
+						else '' end
+	select @titlea titlea,
+		locala a01,
+		custno a02,
+		nick a03,
+		productno a04,
+		product a05,
+		mount a06
+	,case when pno1=1 and pno2=1 then '1'  
+		when pno2=1 then '2'
+		else '3' end gno
+	from @tmp order by locala,custno,pno1,pno2;
+	
 z_vcc_afp01:--z_vcc_afp01
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)

@@ -43,6 +43,8 @@ z_vcc_afp01:--z_vcc_afp01
 		cust nvarchar(max),
 		tel nvarchar(max),
 		addr nvarchar(max),
+		post2 nvarchar(max),
+		addr2 nvarchar(max),
 		datea nvarchar(20),
 		kind nvarchar(20),
 		ckind nvarchar(max),
@@ -74,7 +76,10 @@ z_vcc_afp01:--z_vcc_afp01
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
-	" ,b.tel,case when len(b.addr2)>0 then b.addr2 else b.addr end "+
+	" ,b.tel"+
+	" ,b.addr"+
+	" ,b.post2"+
+	" ,b.addr2"+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.taxtype,b.tax,b.money,b.total,b.invono,b.tranmoney"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.radius,a.total"+
@@ -86,7 +91,7 @@ z_vcc_afp01:--z_vcc_afp01
 	" and a.noa between @t_bno and @t_eno"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
+	insert into @tmp(gno,noa,custno,cust,tel,addr,post2,addr2,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
 		,no2,productno,product,unit,mounts,weights,price,radius,totals,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20)'
 	,@t_bno=@t_bno,@t_eno=@t_eno
@@ -141,7 +146,7 @@ z_vcc_afp01:--z_vcc_afp01
 	close cursor_table
 	deallocate cursor_table
 
-	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr
+	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr,post2=b.post2,addr2=b.addr2
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
 		,taxtype=b.taxtype,ctaxtype=b.ctaxtype,tax=b.tax,[money]=b.[money],total=b.total
 		,invono=b.invono,tranmoney=b.tranmoney
@@ -158,7 +163,6 @@ z_vcc_afp01:--z_vcc_afp01
 		,noa a02
 		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a03
 		,tel a04
-		,addr a05
 		,ckind a06
 		,trantype a07
 		,ctaxtype a08
@@ -166,6 +170,8 @@ z_vcc_afp01:--z_vcc_afp01
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a10
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a11
 		,memo a12
+		,addr a13
+		,post2+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+addr2 a14
 		,case when isnull(tranmoney,0)!=0 then '運&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'費：'else '' end c01
 		,case when isnull(tranmoney,0)!=0 then reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) else '' end c02
 		

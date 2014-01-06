@@ -21,13 +21,15 @@ z_vcc_afp02:--z_vcc_afp02
 		locala nvarchar(20),
 		custno nvarchar(20),
 		nick nvarchar(20),
+		post2 nvarchar(20),
+		addr2 nvarchar(50),
 		productno nvarchar(20),
 		product nvarchar(50),
 		mount float
 	)
 	
-	insert into @tmp(locala,custno,productno,mount)
-	select c.caseuseno,b.custno,a.productno,sum(a.mount)
+	insert into @tmp(locala,custno,post2,productno,mount)
+	select c.caseuseno,b.custno,b.post2,a.productno,sum(a.mount)
 	from view_vccs a
 	left join view_vcc b on a.noa=b.noa
 	left join addr c on b.post2=c.noa
@@ -36,31 +38,35 @@ z_vcc_afp02:--z_vcc_afp02
 	and b.custno between @t_bcustno and @t_ecustno
 	and (len(@t_local)=0 or @t_local=c.caseuseno)
 	and a.productno between @t_bproductno and @t_eproductno
-	group by c.caseuseno,b.custno,a.productno
+	group by c.caseuseno,b.custno,b.post2,a.productno
 	
-	update @tmp set nick=b.nick,product=c.product
+	update @tmp set nick=b.nick,addr2=d.caseuse,product=c.product
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	left join ucc c on a.productno=c.noa
+	left join addr d on a.post2=d.noa
 	
 	update @tmp set pno1=b.recno,pno2=c.recno
 	from @tmp a
-	left join (select ROW_NUMBER()over(PARTITION by locala order by locala,custno,productno) recno,locala,custno,productno from @tmp) b 
-		on a.locala=b.locala and a.custno=b.custno and a.productno=b.productno
-	left join (select ROW_NUMBER()over(PARTITION by locala,custno order by locala,custno,productno) recno,locala,custno,productno from @tmp) c 
-		on a.locala=c.locala and a.custno=c.custno and a.productno=c.productno 
+	left join (select ROW_NUMBER()over(PARTITION by locala order by locala,custno,post2,productno) recno,locala,custno,post2,productno from @tmp) b 
+		on a.locala=b.locala and a.custno=b.custno and a.post2=b.post2 and a.productno=b.productno
+	left join (select ROW_NUMBER()over(PARTITION by locala,custno order by locala,custno,post2,productno) recno,locala,custno,post2,productno from @tmp) c 
+		on a.locala=c.locala and a.custno=c.custno and a.post2=c.post2 and a.productno=c.productno 
 	
 	declare @titlea nvarchar(max)
 	set @titlea = case when len(@t_bdate)>0 and @t_edate!=char(255) then '日期區間： '+@t_bdate+' ~ '+@t_edate+''
 						when @t_bdate=@t_edate then '日期區間： '+@t_bdate
 						else '' end
+
+	
 	select @titlea titlea,
 		locala a01,
 		custno a02,
 		nick a03,
-		productno a04,
-		product a05,
-		mount a06
+		addr2 a04,
+		productno a05,
+		product a06,
+		mount a07
 	,case when pno1=1 and pno2=1 then '1'  
 		when pno2=1 then '2'
 		else '3' end gno

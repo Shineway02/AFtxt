@@ -15,21 +15,17 @@ z_vcc_afp02:--z_vcc_afp02
 	set @t_eproductno = case when '#non' = [10] then CHAR(255) else [10] end
 	set @t_local = case when '#non' = [11] then '' else [11] end
 	---------------------------------------------------------------------------------------------------
-	declare @tmp table(
-		pno1 int,
-		pno2 int,
+	declare @aa table(
+		gno nvarchar(10),
+		pno nvarchar(10),
 		locala nvarchar(20),
-		custno nvarchar(20),
-		nick nvarchar(20),
-		post2 nvarchar(20),
-		addr2 nvarchar(50),
 		productno nvarchar(20),
-		product nvarchar(50),
+		product nvarchar(max),
 		mount float
 	)
 	
-	insert into @tmp(locala,custno,post2,productno,mount)
-	select c.caseuseno,b.custno,b.post2,a.productno,sum(a.mount)
+	insert into @aa(locala,productno,mount)
+	select c.caseuseno,a.productno,sum(a.mount) mount
 	from view_vccs a
 	left join view_vcc b on a.noa=b.noa
 	left join addr c on b.post2=c.noa
@@ -38,39 +34,29 @@ z_vcc_afp02:--z_vcc_afp02
 	and b.custno between @t_bcustno and @t_ecustno
 	and (len(@t_local)=0 or @t_local=c.caseuseno)
 	and a.productno between @t_bproductno and @t_eproductno
-	group by c.caseuseno,b.custno,b.post2,a.productno
+	group by c.caseuseno,a.productno 
+	order by c.caseuseno,a.productno
 	
-	update @tmp set nick=b.nick,addr2=d.caseuse,product=c.product
-	from @tmp a
-	left join cust b on a.custno=b.noa
-	left join ucc c on a.productno=c.noa
-	left join addr d on a.post2=d.noa
+	update @aa set product=b.product
+	from @aa a
+	left join ucc b on a.productno=b.noa
 	
-	update @tmp set pno1=b.recno,pno2=c.recno
-	from @tmp a
-	left join (select ROW_NUMBER()over(PARTITION by locala order by locala,custno,post2,productno) recno,locala,custno,post2,productno from @tmp) b 
-		on a.locala=b.locala and a.custno=b.custno and a.post2=b.post2 and a.productno=b.productno
-	left join (select ROW_NUMBER()over(PARTITION by locala,custno order by locala,custno,post2,productno) recno,locala,custno,post2,productno from @tmp) c 
-		on a.locala=c.locala and a.custno=c.custno and a.post2=c.post2 and a.productno=c.productno 
+	if exists(select * from @aa where product is null)
+	begin
+		update @aa set product=b.product
+		from @aa a
+		outer apply (select top 1 product from view_vccs where productno=a.productno order by datea desc)b
+		where a.product is null
+	end
+	update @aa set gno=case when b.recno=1 then '1' else '2' end,pno=b.recno
+	from @aa a
+	left join (select ROW_NUMBER()over(PARTITION by locala order by productno) recno,locala,productno from @aa ) b on a.locala=b.locala and a.productno=b.productno
 	
 	declare @titlea nvarchar(max)
 	set @titlea = case when len(@t_bdate)>0 and @t_edate!=char(255) then '日期區間： '+@t_bdate+' ~ '+@t_edate+''
 						when @t_bdate=@t_edate then '日期區間： '+@t_bdate
 						else '' end
-
-	
-	select @titlea titlea,
-		locala a01,
-		custno a02,
-		nick a03,
-		addr2 a04,
-		productno a05,
-		product a06,
-		mount a07
-	,case when pno1=1 and pno2=1 then '1'  
-		when pno2=1 then '2'
-		else '3' end gno
-	from @tmp order by locala,custno,pno1,pno2;
+	select @titlea titlea,gno,locala a01,productno a02,product a03,mount a04 from @aa order by locala,productno;
 	
 z_vcc_afp01:--z_vcc_afp01
 	SET QUOTED_IDENTIFIER OFF
